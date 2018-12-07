@@ -4,36 +4,39 @@ import com.datamantra.loganalysis.cassandra.CassandraSettings
 import com.datamantra.loganalysis.kafka.KafkaSettings
 import com.datamantra.loganalysis.spark.SparkSettings
 import com.typesafe.config.Config
+import org.apache.log4j.Logger
 
 /**
  * Created by kafka on 15/11/18.
  */
 class Settings(config: Config) {
 
+  val logger = Logger.getLogger(getClass.getName)
+
   val cassandraSettings = CassandraSettings(
-    config.getString("loganalysis.cassandra.hostname"),
-    config.getString("loganalysis.cassandra.keyspace"),
-    config.getString("loganalysis.cassandra.table.page.views"),
-    config.getString("loganalysis.cassandra.table.status.counter"),
-    config.getString("loganalysis.cassandra.table.visit.by.country"),
-    config.getString("loganalysis.cassandra.table.referrer.counter"),
-    config.getString("loganalysis.cassandra.output.batch.size.bytes")
+    config.getString("cassandra.hostname"),
+    config.getString("cassandra.keyspace"),
+    config.getString("cassandra.table.page.views"),
+    config.getString("cassandra.table.status.counter"),
+    config.getString("cassandra.table.visit.by.country"),
+    config.getString("cassandra.table.referrer.counter"),
+    config.getString("cassandra.output.batch.size.bytes")
   )
   val kafkaSettings = KafkaSettings(
-    config.getString("loganalysis.kafka.bootstrap.server"),
-    config.getString("loganalysis.kafka.topic"),
-    config.getString("loganalysis.kafka.group.id"),
-    config.getString("loganalysis.kafka.key.deserializer"),
-    config.getString("loganalysis.kafka.value.deserializer"),
-    config.getString("loganalysis.kafka.schema.registry")
+    config.getString("kafka.bootstrap.server"),
+    config.getString("kafka.topic"),
+    config.getString("kafka.group.id"),
+    config.getString("kafka.key.deserializer"),
+    config.getString("kafka.value.deserializer"),
+    config.getString("kafka.schema.registry")
   )
   val sparkSettings = SparkSettings(
-    config.getString("loganalysis.spark.master"),
-    config.getString("loganalysis.spark.name"),
-    config.getString("loganalysis.spark.batch.interval"),
-    config.getString("loganalysis.spark.window.interval").toInt,
-    config.getString("loganalysis.spark.max.rate.per.partition"),
-    config.getString("loganalysis.spark.ip.lookup.file")
+    config.getString("spark.master"),
+    config.getString("spark.name"),
+    config.getString("spark.batch.interval"),
+    config.getString("spark.window.interval").toInt,
+    config.getString("spark.max.rate.per.partition"),
+    config.getString("spark.ip.lookup.file")
 
   )
 }

@@ -16,9 +16,16 @@ object Config {
 
   def parseArgs(args: Array[String]) = {
 
-    val applicationConf = ConfigFactory.parseFile(new File(args(0)))
+    val config = ConfigFactory.load("application")
+    val extractedConfig = config.getConfig("loganalysis")
+    logger.info(extractedConfig)
+    // validate the configuration against reference configuration file
+    config.checkValid(ConfigFactory.defaultReference(), "loganalysis")
 
-      setting = new Settings(applicationConf)
+    //logger.info("config file: " + args(0))
+    //val applicationConf = ConfigFactory.parseFile(new File(args(0)))
+
+      setting = new Settings(extractedConfig)
     }
 
 
