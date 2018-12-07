@@ -2,7 +2,10 @@ package com.datamantra.loganalysis
 
 import java.io.File
 
-import com.typesafe.config.ConfigFactory
+import com.datamantra.loganalysis.cassandra.CassandraConfig
+import com.datamantra.loganalysis.kafka.KafkaConfig
+import com.datamantra.loganalysis.spark.SparkConfig
+import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.log4j.Logger
 
 /**
@@ -12,27 +15,36 @@ object Config {
 
   val logger = Logger.getLogger(getClass.getName)
 
-  var setting:Settings = _
+  var applicationConf: Config = _
 
   def parseArgs(args: Array[String]) = {
 
-    val config = ConfigFactory.load("application")
-    val extractedConfig = config.getConfig("loganalysis")
-    logger.info(extractedConfig)
-    // validate the configuration against reference configuration file
-    config.checkValid(ConfigFactory.defaultReference(), "loganalysis")
-
-    //logger.info("config file: " + args(0))
-    //val applicationConf = ConfigFactory.parseFile(new File(args(0)))
-
-      setting = new Settings(extractedConfig)
+    if(args.size == 0) {
+      defaultSettiing
+    } else {
+      applicationConf = ConfigFactory.parseFile(new File(args(0))).getConfig("config").resolve()
+      logger.info(applicationConf)
+      loadConfig()
     }
+  }
 
 
   def debugSetting() = {
 
-    logger.debug("SparkSettings: " + setting.sparkSettings)
-    logger.debug("KafkaSettings: " + setting.kafkaSettings)
-    logger.debug("CassandraSetting: " + setting.cassandraSettings)
+
+  }
+
+  def loadConfig() = {
+
+    CassandraConfig.load
+    KafkaConfig.load
+    SparkConfig.load
+  }
+
+  def defaultSettiing() = {
+
+    CassandraConfig.defaultSettng()
+    KafkaConfig.defaultSetting()
+    SparkConfig.defaultSetting()
   }
 }

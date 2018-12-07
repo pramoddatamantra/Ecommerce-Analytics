@@ -1,7 +1,5 @@
 package com.datamantra.loganalysis.cassandra
 
-import java.beans.Statement
-
 import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.log4j.Logger
 import org.apache.spark.rdd.RDD

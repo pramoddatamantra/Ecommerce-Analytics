@@ -1,21 +1,18 @@
 package com.datamantra.loganalysis.spark
 
-import com.datamantra.loganalysis.Settings
+
 import com.twitter.bijection.avro.GenericAvroCodecs
 import org.apache.avro.generic.GenericRecord
-import org.apache.avro.io.{DecoderFactory, Decoder, DatumReader}
-import org.apache.avro.specific.SpecificDatumReader
 import org.apache.log4j.Logger
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 
 import scala.collection.mutable
 
-//import com.twitter.bijection.avro.GenericAvroCodecs
+
 import io.confluent.kafka.schemaregistry.client.rest.RestService
 import org.apache.avro.Schema
-import org.apache.commons.httpclient.methods.GetMethod
-import org.apache.commons.httpclient.{MultiThreadedHttpConnectionManager, HttpClient}
+
 
 /**
  * Created by kafka on 19/11/18.

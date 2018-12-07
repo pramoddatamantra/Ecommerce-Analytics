@@ -3,7 +3,8 @@ package com.datamantra.loganalysis.spark
 
 
 import com.datamantra.loganalysis.Config
-import com.datamantra.loganalysis.cassandra.CassandraUtils
+import com.datamantra.loganalysis.cassandra.{CassandraConfig, CassandraUtils}
+import com.datamantra.loganalysis.kafka.KafkaConfig
 import com.datastax.spark.connector.cql.CassandraConnector
 
 
@@ -11,7 +12,6 @@ import org.apache.log4j.Logger
 
 
 import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.spark._
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.streaming._
 import org.apache.spark.streaming.kafka010.{HasOffsetRanges, CanCommitOffsets, KafkaUtils}
@@ -32,36 +32,20 @@ object EcommerceLogProcessing {
 
     Config.parseArgs(args)
 
-    val conf = new SparkConf()
-    .setMaster(Config.setting.sparkSettings.master)
-    .setAppName(Config.setting.sparkSettings.name)
-    .set("spark.streaming.kafka.maxRatePerPartition", Config.setting.sparkSettings.maxRatePerPartition)
-    .set("spark.cassandra.connection.host", Config.setting.cassandraSettings.hostname)
-
-
-
-    val kafkaParams = Map[String, String](
-      ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> Config.setting.kafkaSettings.bootstrapServer,
-      ConsumerConfig.GROUP_ID_CONFIG -> Config.setting.kafkaSettings.groupId,
-      ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG ->
-        Config.setting.kafkaSettings.keyDeserializer,
-      ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG ->
-        Config.setting.kafkaSettings.valueDeserializer
-    )
-
-
     val sparkSession =  SparkSession.builder
-      .config(conf)
+      .config(SparkConfig.sparkConf)
       .getOrCreate()
 
-    val batchInterval = Config.setting.sparkSettings.batchInterval.toLong
-    val topics = Set(Config.setting.kafkaSettings.topic)
+    val ssc = new StreamingContext(sparkSession.sparkContext, Duration(SparkConfig.batchInterval))
+
+
+    val topics = Set(KafkaConfig.kafkaParams("topic"))
 
     /* Here we are connecting to Schema Registry through REST and getting latest schema for the given topic */
-    val ecommerceSchemaString = SparkUtils.getSchema(Config.setting.kafkaSettings.schemaRegistry, Config.setting.kafkaSettings.topic)
+    val ecommerceSchemaString = SparkUtils.getSchema(KafkaConfig.kafkaParams("schema.registry"), KafkaConfig.kafkaParams("topic"))
 
 
-    val countryCodeBroadcast = sparkSession.sparkContext.broadcast(SparkUtils.createCountryCodeMap(Config.setting.sparkSettings.ipLookupFile))
+    val countryCodeBroadcast = sparkSession.sparkContext.broadcast(SparkUtils.createCountryCodeMap(SparkConfig.ipLookupFile))
 
     /*
        Connector Object is created in driver. It is serializable.
@@ -70,8 +54,14 @@ object EcommerceLogProcessing {
 
     val connector = CassandraConnector(sparkSession.sparkContext.getConf)
 
-    val ssc = new StreamingContext(sparkSession.sparkContext, Duration(batchInterval))
-
+    val kafkaParams = Map[String, String](
+      ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> KafkaConfig.kafkaParams("bootstrap.servers"),
+      ConsumerConfig.GROUP_ID_CONFIG -> KafkaConfig.kafkaParams("group.id"),
+      ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG -> KafkaConfig.kafkaParams("key.deserializer"),
+      ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG ->KafkaConfig.kafkaParams("value.deserializer"),
+      ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> KafkaConfig.kafkaParams("enable.auto.commit"),
+      ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> KafkaConfig.kafkaParams("auto.offset.reset")
+    )
 
     logger.info("Connecting to Kafka")
     val kafkaStream = KafkaUtils.createDirectStream[String, Array[Byte]](ssc,
@@ -88,7 +78,7 @@ object EcommerceLogProcessing {
       /* Extract Offset */
       val offsetRanges = rdd.asInstanceOf[HasOffsetRanges].offsetRanges
       offsetRanges.foreach(offRange => {
-        logger.debug("fromOffset: " + offRange.fromOffset + "untill Offset: " + offRange.untilOffset)
+        logger.info("fromOffset: " + offRange.fromOffset + "untill Offset: " + offRange.untilOffset)
       })
 
       val ecommerceValueRdd = rdd.map(_.value())
@@ -98,19 +88,19 @@ object EcommerceLogProcessing {
 
       /*Page views analytics */
       val pageViewsRdd = SparkUtils.getPageViews(genericAvroRdd)
-      CassandraUtils.updateToCassandra(pageViewsRdd, connector, Config.setting.cassandraSettings.keyspace, Config.setting.cassandraSettings.pageViewsTable, "page")
+      CassandraUtils.updateToCassandra(pageViewsRdd, connector, CassandraConfig.keyspace, CassandraConfig.pageViewsTable, "page")
 
       /*Response Code Analytics */
       val statusCodeCountRdd = SparkUtils.getStatusCount(genericAvroRdd)
-      CassandraUtils.updateToCassandra(statusCodeCountRdd, connector, Config.setting.cassandraSettings.keyspace, Config.setting.cassandraSettings.statusCounterTable, "status_code")
+      CassandraUtils.updateToCassandra(statusCodeCountRdd, connector, CassandraConfig.keyspace, CassandraConfig.statusCounterTable, "status_code")
 
       /* Referrer Analytics */
       val referrerRdd = SparkUtils.getReferrer(genericAvroRdd)
-      CassandraUtils.updateToCassandra(referrerRdd, connector, Config.setting.cassandraSettings.keyspace, Config.setting.cassandraSettings.referrerCounterTable, "referrer")
+      CassandraUtils.updateToCassandra(referrerRdd, connector, CassandraConfig.keyspace, CassandraConfig.referrerCounterTable, "referrer")
 
       /* Country Visit Analytics */
       val countryVisitRdd = SparkUtils.getVisitsByCounrty(genericAvroRdd, countryCodeBroadcast)
-      CassandraUtils.updateToCassandra(countryVisitRdd, connector, Config.setting.cassandraSettings.keyspace, Config.setting.cassandraSettings.visitsByCountryTable, "country")
+      CassandraUtils.updateToCassandra(countryVisitRdd, connector, CassandraConfig.keyspace, CassandraConfig.visitsByCountryTable, "country")
 
       /* After all processing is done, offset is committed to Kafka */
       kafkaStream.asInstanceOf[CanCommitOffsets].commitAsync(offsetRanges)
