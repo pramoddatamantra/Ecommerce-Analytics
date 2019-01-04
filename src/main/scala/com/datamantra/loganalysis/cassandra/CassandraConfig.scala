@@ -32,11 +32,11 @@ object CassandraConfig {
   /* Default Settings will be used when you run the project from Intellij */
   def defaultSettng() = {
     cassandrHost = "localhost"
-    keyspace = "creditcard"
+    keyspace = "ecommercelog"
     pageViewsTable = "page_views"
     statusCounterTable = "status_counter"
     visitsByCountryTable = "visits_by_country"
-    referrerCounterTable = "customer"
+    referrerCounterTable = "referrer_counter"
   }
 
 }

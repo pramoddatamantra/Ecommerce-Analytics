@@ -64,12 +64,12 @@ object EcommerceLogProcessing {
     )
 
     logger.info("Connecting to Kafka")
-    val kafkaStream = KafkaUtils.createDirectStream[String, Array[Byte]](ssc,
+    val kafkaDstream = KafkaUtils.createDirectStream[String, Array[Byte]](ssc,
                        PreferConsistent,
                        Subscribe[String, Array[Byte]](topics, kafkaParams)
                        )
 
-    kafkaStream.foreachRDD(rdd => {
+    kafkaDstream.foreachRDD(rdd => {
 
       if(rdd.isEmpty()) {
         logger.info("Did not receive any data")
@@ -103,7 +103,7 @@ object EcommerceLogProcessing {
       CassandraUtils.updateToCassandra(countryVisitRdd, connector, CassandraConfig.keyspace, CassandraConfig.visitsByCountryTable, "country")
 
       /* After all processing is done, offset is committed to Kafka */
-      kafkaStream.asInstanceOf[CanCommitOffsets].commitAsync(offsetRanges)
+      kafkaDstream.asInstanceOf[CanCommitOffsets].commitAsync(offsetRanges)
 
     })
 
